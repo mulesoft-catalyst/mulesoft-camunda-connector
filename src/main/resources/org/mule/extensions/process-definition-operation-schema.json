@@ -1,0 +1,4 @@
+{
+  "type": "string",
+  "enum": ["xml", "statistics", "diagram","form-variables", "rendered-form", "startForm"]
+}

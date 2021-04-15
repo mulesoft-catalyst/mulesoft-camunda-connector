@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="Camunda Connector"
+        prefix="module-camunda"
+        doc:description="This module relies in runtime provided components"
+
+        xmlns="http://www.mulesoft.org/schema/mule/module"
+        xmlns:mule="http://www.mulesoft.org/schema/mule/core"
+        xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+        xmlns:tns="http://www.mulesoft.org/schema/mule/module-camunda"
+        xmlns:http="http://www.mulesoft.org/schema/mule/http"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.mulesoft.org/schema/mule/module http://www.mulesoft.org/schema/mule/module/current/mule-module.xsd
+           http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+           http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+           http://www.mulesoft.org/schema/mule/module-camunda http://www.mulesoft.org/schema/mule/module-camunda/current/mule-module-camunda.xsd">
+
+	<property name="host" type="string" use="REQUIRED"
+		displayName="Host" defaultValue="" tab="Camunda Configuration"></property>
+	<property name="port" type="string" use="REQUIRED"
+		displayName="Port" defaultValue="" tab="Camunda Configuration"></property>
+	<property name="username" type="string" use="REQUIRED"
+		displayName="Username" defaultValue="" tab="Camunda Configuration"></property>
+	<property name="password" type="string" use="REQUIRED"
+		displayName="Password" password="true" defaultValue=""
+		tab="Camunda Configuration"></property>
+
+	<http:request-config name="camunda-request-config"
+		basePath="/engine-rest/">
+		<http:request-connection host="#[vars.host]"
+			protocol="HTTP" port="#[vars.port]">
+			<http:authentication>
+				<http:basic-authentication
+					username="#[vars.username]" password="#[vars.password]" />
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+
+	<operation name="submit-start-form"
+		doc:description="Submit Start Form">
+		<parameters>
+			<parameter name="id" type="string" use="OPTIONAL"
+				displayName="ID" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="key" type="string" use="OPTIONAL"
+				displayName="Key" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="tenantId" type="string" use="OPTIONAL"
+				displayName="Tenant ID" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="requestBody" type="string"
+				displayName="Request Body" defaultValue="#[]" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+
+		<body>
+			<mule:choice>
+				<mule:when
+					expression="#[vars.id != null and (sizeOf(trim(vars.id)) > 0)]">
+					<mule:set-variable
+						value="#['process-definition/'++ vars.id ++ '/submit-form']"
+						doc:name="Request ID" variableName="requestPath" />
+				</mule:when>
+				<mule:when
+					expression="#[vars.key != null and (sizeOf(trim(vars.key))> 0)]">
+					<mule:set-variable
+						value="#['process-definition/key/' ++ vars.key ++ '/submit-form']"
+						doc:name="Request Key" variableName="requestPath" />
+				</mule:when>
+				<mule:otherwise>
+					<mule:set-variable
+						value="['process-definition/key/' ++ vars.key ++ '/tenant-id/' ++ vars.tenantId ++ '/submit-form']"
+						doc:name="Request Tenant ID" variableName="requestPath" />
+				</mule:otherwise>
+			</mule:choice>
+
+			<mule:logger level="DEBUG" doc:name="Logger"
+				message="#[vars.requestPath]" />
+			<mule:set-payload value="#[vars.requestBody]" />
+			<http:request config-ref="camunda-request-config"
+				path="#[vars.requestPath]" method="POST" />
+		</body>
+		<output type="string" doc:description="Form's output" />
+	</operation>
+
+	<operation name="get-process-definition"
+		doc:description="Get Process Definition">
+		<parameters>
+			<parameter name="processDefinitionId" type="string"
+				use="OPTIONAL" displayName="Process Definition Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="key" type="string" use="OPTIONAL"
+				displayName="Key" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:choice>
+				<mule:when
+					expression="#[vars.processDefinitionId != null and (sizeOf(trim(vars.processDefinitionId)) > 0)]">
+					<mule:set-variable
+						value="#['process-definition?processDefinitionId='++ vars.processDefinitionId]"
+						doc:name="Get Process By ID" variableName="requestPath" />
+				</mule:when>
+				<mule:otherwise>
+					<mule:set-variable
+						value="#['process-definition?key=' ++ vars.key]"
+						doc:name="Get Process By Key" variableName="requestPath" />
+				</mule:otherwise>
+			</mule:choice>
+			<http:request config-ref="camunda-request-config"
+				path="#[vars.requestPath]" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Definition output" />
+	</operation>
+
+	<operation name="get-deployments"
+		doc:description="Get All Deployments">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Deployment output" />
+	</operation>
+
+
+	<operation name="get-deployment-count"
+		doc:description="Get Deployment Count">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/count']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Deployment output" />
+	</operation>
+
+
+	<operation name="get-deployment-by-id"
+		doc:description="Get Deployment By Id">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId]" method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="delete-deployment-by-id"
+		doc:description="Delete Deployment By Id">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId]" method="DELETE" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="get-deployment-resources"
+		doc:description="Get Resources by Deployment Id">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId ++ '/resources']"
+				method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	<operation name="get-deployment-resource-by-resource-id"
+		doc:description="Get Resource by Id for Deployment Id">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="resourceId" type="string" use="REQUIRED"
+				displayName="Resource Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId ++ '/resources/' ++ vars.resourceId]"
+				method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation
+		name="get-binary-deployment-resource-by-resource-id"
+		doc:description="Get Binary Resource by Id for Deployment Id">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="resourceId" type="string" use="REQUIRED"
+				displayName="Resource Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId ++ '/resources/' ++ vars.resourceId ++ '/data']"
+				method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="redeploy" doc:description="Process Redeploy">
+		<parameters>
+			<parameter name="deploymentId" type="string" use="REQUIRED"
+				displayName="Deployment Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="resourceIdsCSV" type="string"
+				use="REQUIRED" displayName="Resource Ids" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="resourceNamesCSV" type="string"
+				use="REQUIRED" displayName="Resource Names" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="source" type="string" use="REQUIRED"
+				displayName="Source" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output application/json
+---
+{
+  'resourceIds':  vars.resourceIdsCSV ,
+  'resourceNames':  vars.resourceNamesCSV,
+  'source' : vars.source
+}]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/' ++ vars.deploymentId ++ '/redeploy']"
+				method="POST" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="create" doc:description="Process Deploy">
+		<parameters>
+			<parameter name="deploymentName" type="string"
+				use="REQUIRED" displayName="Deployment Name" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="enableDuplicateFiltering" type="string"
+				use="REQUIRED" displayName="Enable Duplicate Filtering"
+				defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="deployChangedOnly" type="string"
+				use="REQUIRED" displayName="Deploy Changed Only" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="deploymentSource" type="string"
+				use="REQUIRED" displayName="Deployment Source" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="fileName" type="string" use="REQUIRED"
+				displayName="File Name" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="fileContent" type="string" use="REQUIRED"
+				displayName="File Content" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output multipart/form-data
+---
+{
+  'parts': {
+    'deployment-name': {
+      'headers': {
+        'Content-Disposition': {
+          'name': 'deployment-name',
+          'subtype': 'form-data'
+        }
+      },
+      'content': vars.deploymentName
+    },
+    'enable-duplicate-filtering': {
+      'headers': {
+        'Content-Disposition': {
+          'name': 'enable-duplicate-filtering',
+          'subtype': 'form-data'
+        }
+      },
+      'content': vars.enableDuplicateFiltering
+    },
+    'deploy-changed-only': {
+      'headers': {
+        'Content-Disposition': {
+          'name': 'deploy-changed-only',
+          'subtype': 'form-data'
+        }
+      },
+      'content': vars.deployChangedOnly
+    },
+    'deployment-source': {
+      'headers': {
+        'Content-Disposition': {
+          'name': 'deployment-source',
+          'subtype': 'form-data'
+        }
+      },
+      'content': vars.deploymentSource
+    },
+    'file': {
+      'headers': {
+        'Content-Disposition': {
+          'name': 'file',
+          'filename': vars.fileName,
+          'subtype': 'form-data'
+        },
+        'Content-Type': 'application/octet-stream'
+      },
+      'content': vars.fileContent
+    }
+  }
+}]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['deployment/create' ]" method="POST" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="get-task-list"
+		doc:description="Get Task List">
+		<parameters>
+			<parameter name="processDefinitionId" type="string"
+				use="REQUIRED" displayName="Process Definition Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="firstResult" type="string" use="OPTIONAL"
+				displayName="First Result" defaultValue="1" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="maxResult" type="string" use="OPTIONAL"
+				displayName="Max Result" defaultValue="10" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:set-variable
+				value="#['task?processDefinitionId=' ++ vars.processDefinitionId ++ '&amp;firstResult=' ++ vars.firstResult ++ '&amp;maxResult=' ++ vars.maxResult]"
+				doc:name="Set Request Path" variableName="requestPath" />
+			<http:request config-ref="camunda-request-config"
+				path="#['task?' ++ vars.requestPath]" method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="get-task" doc:description="Get Task">
+		<parameters>
+			<parameter name="taskId" type="string" use="OPTIONAL"
+				displayName="Task Id" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['task/' ++ vars.taskId]" method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="set-assignee" doc:description="Set Assignee">
+		<parameters>
+			<parameter name="taskId" type="string" use="REQUIRED"
+				displayName="Task Id" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="userId" type="string" use="REQUIRED"
+				displayName="User Id" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output application/json
+---
+{
+	'userId': vars.userId
+}]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['task/' ++ vars.taskId ++ '/assignee']" method="POST" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	<!-- Process Definition Rest Calls Start -->
+	<operation name="delete-process-definition"
+		doc:description="Delete process-definition">
+		<parameters>
+			<parameter name="id" type="string" use="OPTIONAL"
+				displayName="ID" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="key" type="string" use="OPTIONAL"
+				displayName="Key" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="tenantId" type="string" use="OPTIONAL"
+				displayName="Tenant ID" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+
+		<body>
+			<mule:choice>
+				<mule:when
+					expression="#[vars.id != null and (sizeOf(trim(vars.id)) > 0)]">
+					<mule:set-variable
+						value="#['process-definition/'++ vars.id ]" doc:name="Request ID"
+						variableName="requestPath" />
+				</mule:when>
+				<mule:when
+					expression="#[vars.key != null and (sizeOf(trim(vars.key))> 0)]">
+					<mule:set-variable
+						value="#['process-definition/key/' ++ vars.key ++ '/delete']"
+						doc:name="Request Key" variableName="requestPath" />
+				</mule:when>
+				<mule:otherwise>
+					<mule:set-variable
+						value="['process-definition/key/' ++ vars.key ++ '/tenant-id/' ++ vars.tenantId ++ '/delete']"
+						doc:name="Request Tenant ID" variableName="requestPath" />
+				</mule:otherwise>
+			</mule:choice>
+
+			<mule:logger level="DEBUG" doc:name="Logger"
+				message="#[vars.requestPath]" />
+			<http:request config-ref="camunda-request-config"
+				path="#[vars.requestPath]" method="DELETE" />
+		</body>
+		<output type="string" doc:description="Form's output" />
+		
+	</operation>
+
+	<operation name="get-process-definition-details-by-id"
+		doc:description="Get process-definition By Id">
+		<parameters>
+			<parameter name="operation"
+				type="GetProcessDefinitionOperationJsonType" use="REQUIRED"
+				displayName="Operation" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="id" type="string" use="REQUIRED"
+				displayName="Key" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+
+		<body>
+			<mule:logger level="DEBUG" doc:name="Logger"
+				message="#['process-definition/'++ vars.id ++ '/' ++ vars.operation]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['process-definition/'++ vars.id ++ '/' ++ vars.operation]"
+				method="GET" />
+		</body>
+		<output type="string" doc:description="Form's output" />
+	</operation>
+
+	<operation name="get-process-definitions"
+		doc:description="Process Definition List">
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['process-definition']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Deployment output" />
+	</operation>
+
+	<operation name="get-process-definition-count"
+		doc:description="Process Definitions Count">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['process-definition/count']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Deployment output" />
+	</operation>
+
+	<operation name="get-process-definition-statistics"
+		doc:description="Process Definitions Statistics">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['process-definition/statistics']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Deployment output" />
+	</operation>
+
+	<operation name="get-process-definition-by-id"
+		doc:description="Get Proecss Definition By Id">
+		<parameters>
+			<parameter name="processDefinitionId" type="string"
+				use="REQUIRED" displayName="Proecss Definition Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['process-definition/' ++ vars.processDefinitionId"
+				method="GET" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+
+	<operation name="start" doc:description="Start Instance">
+		<parameters>
+			<parameter name="id" type="string" use="OPTIONAL"
+				displayName="ID" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="key" type="string" use="OPTIONAL"
+				displayName="Key" defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="tenantId" type="string" use="OPTIONAL"
+				displayName="Tenant ID" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+			<parameter name="requestBody" type="string"
+				displayName="Request Body" defaultValue="#[]" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+
+		<body>
+			<mule:choice>
+				<mule:when
+					expression="#[vars.id != null and (sizeOf(trim(vars.id)) > 0)]">
+					<mule:set-variable
+						value="#['process-definition/'++ vars.id ++ '/submit-form']"
+						doc:name="Request ID" variableName="requestPath" />
+				</mule:when>
+				<mule:when
+					expression="#[vars.key != null and (sizeOf(trim(vars.key))> 0)]">
+					<mule:set-variable
+						value="#['process-definition/key/' ++ vars.key ++ '/submit-form']"
+						doc:name="Request Key" variableName="requestPath" />
+				</mule:when>
+				<mule:otherwise>
+					<mule:set-variable
+						value="['process-definition/key/' ++ vars.key ++ '/tenant-id/' ++ vars.tenantId ++ '/submit-form']"
+						doc:name="Request Tenant ID" variableName="requestPath" />
+				</mule:otherwise>
+			</mule:choice>
+
+			<mule:logger level="DEBUG" doc:name="Logger"
+				message="#[vars.requestPath]" />
+			<mule:set-payload value="#[vars.requestBody]" >
+				
+				
+			</mule:set-payload>
+			<http:request config-ref="camunda-request-config"
+				path="#[vars.requestPath]" method="POST" />
+		</body>
+		<output type="string" doc:description="Form's output" />
+	</operation>
+
+	<!-- Process Definition Rest Calls Start -->
+	<!-- Identity operations -->
+	
+	<operation name="get-users-groups" doc:description="Get User's Groups">
+        <parameters>
+            <parameter name="userId" type="string" use="OPTIONAL" displayName="User Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <http:request config-ref="camunda-request-config" path="#['identity/groups?userId=' ++ vars.userId]" method="GET"/>
+        </body>
+        <output type="string" doc:description="Get User's Groups as output"/>
+    </operation>
+    
+    <operation name="verify-user" doc:description="Verify User">
+        <parameters>
+            <parameter name="username" type="string" use="REQUIRED" displayName="User Name" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+            <parameter name="password" type="string" use="REQUIRED" displayName="Password" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <mule:set-payload value="#[%dw 2.0
+output application/json
+---
+{
+	'username': vars.username,
+	'password': vars.password
+	
+}]"/>
+            <http:request config-ref="camunda-request-config" path="#['identity/verify/']"
+                          method="POST"/>
+        </body>
+        <output type="string" doc:description="Task output"/>
+    </operation>
+    
+	<!-- Identity operations -->
+	
+	<!-- USER operations -->
+	<operation name="get-users"
+		doc:description="Get All Users">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['user']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process All Users" />
+	</operation>
+
+
+	<operation name="get-users-count"
+		doc:description="Get Users Count">
+
+		<body>
+			<http:request config-ref="camunda-request-config"
+				path="#['user/count']" method="GET" />
+		</body>
+		<output type="string"
+			doc:description="Process Users output" />
+	</operation>
+	
+	<operation name="get-users-profile" doc:description="Get User Profile">
+        <parameters>
+            <parameter name="userId" type="string" use="OPTIONAL" displayName="User Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <http:request config-ref="camunda-request-config" path="#['user/' ++ vars.userId ++ '/profile']" method="GET"/>
+        </body>
+        <output type="string" doc:description="Get User's Groups as output"/>
+    </operation>
+    
+    <operation name="delete-user-by-id"
+		doc:description="Delete User By Id">
+		<parameters>
+			<parameter name="userId" type="string" use="REQUIRED"
+				displayName="User Id" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+
+			<http:request config-ref="camunda-request-config"
+				path="#['user/' ++ vars.userId]" method="DELETE" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	
+
+	
+
+	
+	<operation name="unlock-user" doc:description="Unlock User">
+		<parameters>
+			<parameter name="userId" type="string"
+				use="REQUIRED" displayName="User Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			
+			
+		</parameters>
+		<body>
+			
+			<http:request config-ref="camunda-request-config"
+				path="#['user/' ++ vars.userId ++'/unlock' ]" method="POST" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	
+	<operation name="create-user" doc:description="Create User">
+		<parameters>
+			<parameter name="userId" type="string"
+				use="REQUIRED" displayName="User Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="fname" type="string"
+				use="REQUIRED" displayName="First Name"
+				defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="lname" type="string"
+				use="REQUIRED" displayName="Last Name" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="email" type="string"
+				use="REQUIRED" displayName="Email" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="password" type="string" use="REQUIRED"
+				displayName="Password" defaultValue="" role="BEHAVIOUR"
+				tab="General"></parameter>
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output application/json
+---
+{'profile': 
+  {'id': vars.userId,
+  'firstName':vars.fname,
+  'lastName':vars.lname,
+  'email': vars.email},
+'credentials': 
+  {'password': vars.password}
+}
+]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['user/create' ]" method="POST" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	
+	<operation name="update-user-profile" doc:description="Update User Profile">
+		<parameters>
+			<parameter name="userId" type="string"
+				use="REQUIRED" displayName="User Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="fname" type="string"
+				use="REQUIRED" displayName="First Name"
+				defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="lname" type="string"
+				use="REQUIRED" displayName="Last Name" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="email" type="string"
+				use="REQUIRED" displayName="Email" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output application/json
+---
+
+  {'id': vars.userId,
+  'firstName':vars.fname,
+  'lastName':vars.lname,
+  'email': vars.email
+  }
+]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['user/' ++ vars.userId++ '/profile' ]" method="PUT" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	
+	<operation name="update-user-credentials" doc:description="Update User Credentials">
+		<parameters>
+			<parameter name="userId" type="string"
+				use="REQUIRED" displayName="User Id" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="authenticatedUserPassword" type="string"
+				use="REQUIRED" displayName="Authenticated User Password"
+				defaultValue="" role="BEHAVIOUR" tab="General"></parameter>
+			<parameter name="password" type="string"
+				use="REQUIRED" displayName="Password" defaultValue=""
+				role="BEHAVIOUR" tab="General"></parameter>
+			
+		</parameters>
+		<body>
+			<mule:set-payload
+				value="#[%dw 2.0
+output application/json
+---
+{'password':vars.password, 'authenticatedUserPassword': vars.authenticatedUserPassword}
+]" />
+			<http:request config-ref="camunda-request-config"
+				path="#['user/' ++ vars.userId++ '/credentials' ]" method="PUT" />
+		</body>
+		<output type="string" doc:description="Task output" />
+	</operation>
+	<!-- USER operations -->
+	
+	<!--Claim Task -->
+    <operation name="claim-task" doc:description="Claim Task">
+        <parameters>
+            <parameter name="taskId" type="string" displayName="Task Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+            <parameter name="userId" type="string" displayName="User Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <mule:set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	userId: vars.userId&#10;}]" doc:name="Set Payload" doc:id="53ac6317-f1ab-42f3-be45-937deb59df4f" />
+            <http:request config-ref="camunda-request-config" path="#['task/' ++ vars.taskId ++ '/claim']" method="POST"/>
+        </body>
+        <output type="string" doc:description="Task output"/>
+    </operation>
+
+    <!--Unclaim Task -->
+    <operation name="unclaim-task" doc:description="Unclaim Task">
+        <parameters>
+            <parameter name="taskId" type="string" displayName="Task Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+            <parameter name="userId" type="string" displayName="User Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <mule:set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	userId: vars.userId&#10;}]" doc:name="Set Payload" doc:id="53ac6317-f1ab-42f3-be45-937deb59df4f" />
+            <http:request config-ref="camunda-request-config" path="#['task/' ++ vars.taskId ++ '/unclaim']" method="POST"/>
+        </body>
+        <output type="string" doc:description="Task output"/>
+    </operation>
+
+    <!--Delegate Task -->
+    <operation name="delegate-task" doc:description="Delegate Task">
+        <parameters>
+            <parameter name="taskId" type="string" displayName="Task Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+            <parameter name="userId" type="string" displayName="User Id" defaultValue="" role="BEHAVIOUR"
+                       tab="General"></parameter>
+        </parameters>
+        <body>
+            <mule:set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	userId: vars.userId&#10;}]" doc:name="Set Payload" doc:id="53ac6317-f1ab-42f3-be45-937deb59df4f" />
+            <http:request config-ref="camunda-request-config" path="#['task/' ++ vars.taskId ++ '/delegate']" method="POST"/>
+        </body>
+        <output type="string" doc:description="Task output"/>
+    </operation>
+
+</module>

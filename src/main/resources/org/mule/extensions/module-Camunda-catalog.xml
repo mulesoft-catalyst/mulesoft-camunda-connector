@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalogs xmlns="http://www.mulesoft.org/schema/mule/types" >
+    <catalog name="GetProcessDefinitionOperationJsonType" format="application/json">
+        <schema format="application/json+schema" location="./process-definition-operation-schema.json" />
+    </catalog>
+</catalogs>
